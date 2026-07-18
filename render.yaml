@@ -1,31 +1,14 @@
 services:
   - type: web
     name: launch-performance-intelligence
-    runtime: python
-    repo: https://github.com/gokulakb/launch-performance-intelligence
+    runtime: image
     plan: free
     region: ohi
-    buildCommand: |
-      # Force Python 3.11
-      pyenv install 3.11.0 -s
-      pyenv global 3.11.0
-      pip install --upgrade pip
-      pip install setuptools==69.0.3
-      pip install -r requirements.txt
-      python render_init.py
-    startCommand: streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false --server.maxUploadSize=10
+    dockerfilePath: ./Dockerfile
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
       - key: RENDER
         value: true
-      - key: STREAMLIT_SERVER_PORT
+      - key: PORT
         value: 10000
-      - key: STREAMLIT_SERVER_ADDRESS
-        value: 0.0.0.0
-      - key: STREAMLIT_BROWSER_GATHER_USAGE_STATS
-        value: false
-      - key: STREAMLIT_SERVER_MAX_UPLOAD_SIZE
-        value: 10
     healthCheckPath: /_stcore/health
     autoDeploy: true
