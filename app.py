@@ -1,12 +1,35 @@
+"""
+Launch Performance Intelligence Dashboard
+Main application entry point
+"""
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import sqlite3
 import io
+import os
+import sys
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
 
+# === RENDER DEPLOYMENT SETUP ===
+# Initialize database on Render
+if os.environ.get('RENDER'):
+    print("🚀 Running on Render - Initializing database...")
+    try:
+        # Check if we need to initialize
+        db_path = 'database/launch_performance.db'
+        if not os.path.exists(db_path):
+            import subprocess
+            subprocess.run(['python', 'render_init.py'], check=True)
+            print("✅ Database initialized on Render!")
+    except Exception as e:
+        print(f"⚠️  Database initialization warning: {e}")
+# === END RENDER SETUP ===
+
+# Page configuration must be the first Streamlit command
 st.set_page_config(
     page_title="Launch Performance Intelligence Dashboard",
     page_icon=":bar_chart:",
@@ -14,6 +37,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Constants
 COMPANIES = ['TechCorp', 'DataFlow', 'CloudNine', 'SmartSolutions', 'InnovateLabs']
 COLORS = {
     'primary': '#1E88E5',
@@ -27,20 +51,25 @@ COLORS = {
 }
 
 def get_db_connection():
+    """Get database connection."""
     return sqlite3.connect('database/launch_performance.db')
 
 def format_currency(value):
+    """Format value as currency."""
     return f"${value:,.0f}"
 
 def format_percentage(value):
+    """Format value as percentage."""
     return f"{value:.1f}%"
 
 def format_number(value):
+    """Format number with commas."""
     return f"{value:,}"
 
 # ============ FUNCTION DEFINITIONS ============
 
 def render_executive_dashboard(company):
+    """Render the executive dashboard."""
     st.header("Executive Dashboard")
     
     conn = get_db_connection()
@@ -84,41 +113,78 @@ def render_executive_dashboard(company):
     latest = latest_df.iloc[0]
     total_users = user_df['total_users'].iloc[0] if not user_df.empty else 0
     
+    # KPI Cards - First Row
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total Users", format_number(total_users), delta="+12.5%")
+        st.metric(
+            "Total Users",
+            format_number(total_users),
+            delta="+12.5%"
+        )
     
     with col2:
-        st.metric("Active Users", format_number(latest.get('active_users', 0)), delta="+8.3%")
+        st.metric(
+            "Active Users",
+            format_number(latest.get('active_users', 0)),
+            delta="+8.3%"
+        )
     
     with col3:
-        st.metric("Signups", format_number(latest.get('signups', 0)), delta="+5.7%")
+        st.metric(
+            "Signups",
+            format_number(latest.get('signups', 0)),
+            delta="+5.7%"
+        )
     
     with col4:
-        st.metric("Hires", format_number(latest.get('hires', 0)), delta="-2.1%", delta_color="inverse")
+        st.metric(
+            "Hires",
+            format_number(latest.get('hires', 0)),
+            delta="-2.1%",
+            delta_color="inverse"
+        )
     
+    # KPI Cards - Second Row
     col1, col2, col3, col4 = st.columns(4)
     
     total_revenue = revenue_df['total_revenue'].iloc[0] if not revenue_df.empty else 0
     
     with col1:
-        st.metric("Total Revenue", format_currency(total_revenue), delta="+15.2%")
+        st.metric(
+            "Total Revenue",
+            format_currency(total_revenue),
+            delta="+15.2%"
+        )
     
     with col2:
         retention = latest.get('retention_rate', 0) * 100
-        st.metric("Retention (D7)", format_percentage(retention), delta="+2.3%")
+        st.metric(
+            "Retention (D7)",
+            format_percentage(retention),
+            delta="+2.3%"
+        )
     
     with col3:
         quality = latest.get('quality_score', 0) * 100
-        st.metric("Quality Score", format_percentage(quality), delta="+1.8%")
+        st.metric(
+            "Quality Score",
+            format_percentage(quality),
+            delta="+1.8%"
+        )
     
     with col4:
         visitors = latest.get('visitors', 1)
         hires = latest.get('hires', 0)
         conversion = (hires / visitors * 100) if visitors > 0 else 0
-        st.metric("Conversion Rate", format_percentage(conversion), delta="-1.5%", delta_color="inverse")
+        st.metric(
+            "Conversion Rate",
+            format_percentage(conversion),
+            delta="-1.5%",
+            delta_color="inverse"
+        )
     
+    # Charts
     st.markdown("---")
     
     col1, col2 = st.columns(2)
@@ -190,6 +256,7 @@ def render_executive_dashboard(company):
         else:
             st.warning("No revenue data available")
     
+    # Gauges
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
     
@@ -252,6 +319,7 @@ def render_executive_dashboard(company):
 
 
 def render_funnel_dashboard(company):
+    """Render the funnel dashboard."""
     st.header("Funnel Dashboard")
     
     conn = get_db_connection()
@@ -363,6 +431,7 @@ def render_funnel_dashboard(company):
 
 
 def render_revenue_dashboard(company):
+    """Render the revenue dashboard."""
     st.header("Revenue Dashboard")
     
     conn = get_db_connection()
@@ -516,6 +585,7 @@ def render_revenue_dashboard(company):
 
 
 def render_retention_dashboard(company):
+    """Render the retention dashboard."""
     st.header("Retention Dashboard")
     
     conn = get_db_connection()
@@ -642,6 +712,7 @@ def render_retention_dashboard(company):
 
 
 def render_quality_dashboard():
+    """Render the data quality dashboard."""
     st.header("Data Quality Dashboard")
     
     conn = get_db_connection()
@@ -736,6 +807,7 @@ def render_quality_dashboard():
 
 
 def render_problem_ranking(company):
+    """Render the problem ranking dashboard."""
     st.header("Problem Ranking Dashboard")
     
     problems = [
@@ -831,6 +903,7 @@ def render_problem_ranking(company):
 
 
 def render_backlog():
+    """Render the analytics backlog."""
     st.header("Analytics Backlog")
     
     backlog_items = [
@@ -882,6 +955,7 @@ def render_backlog():
 
 
 def render_export_dashboard(company):
+    """Render the export dashboard."""
     st.header("Export Dashboard")
     
     conn = get_db_connection()
@@ -947,23 +1021,44 @@ def render_export_dashboard(company):
                 st.warning("No data to export")
     
     with col3:
-        st.write("**Preview Export**")
-        if st.button("Preview Data"):
-            st.subheader("Data Preview")
-            tab1, tab2 = st.tabs(["Launch Metrics", "Revenue"])
-            
-            with tab1:
+        st.write("**PDF Report**")
+        if st.button("Export as PDF"):
+            try:
+                # Try to use reportlab for PDF generation
+                from reportlab.lib.pagesizes import letter
+                from reportlab.pdfgen import canvas
+                
+                # Create a simple PDF
+                pdf_buffer = io.BytesIO()
+                c = canvas.Canvas(pdf_buffer, pagesize=letter)
+                c.drawString(100, 750, "Launch Performance Intelligence Report")
+                c.drawString(100, 730, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+                c.drawString(100, 700, f"Company: {company if company != 'All' else 'All Companies'}")
+                c.drawString(100, 670, "Data Summary:")
+                
                 if not metrics_df.empty:
-                    st.dataframe(metrics_df.head(10), use_container_width=True)
-                else:
-                    st.info("No metrics data available")
-            
-            with tab2:
-                if not revenue_df.empty:
-                    st.dataframe(revenue_df.head(10), use_container_width=True)
-                else:
-                    st.info("No revenue data available")
-
+                    y = 640
+                    for idx, row in metrics_df.head(10).iterrows():
+                        c.drawString(100, y, f"{row['metric_date']}: Visitors={row['visitors']}, Revenue=${row['revenue']:,.0f}")
+                        y -= 20
+                        if y < 100:
+                            c.showPage()
+                            y = 750
+                
+                c.save()
+                pdf_buffer.seek(0)
+                
+                st.download_button(
+                    label="Download PDF",
+                    data=pdf_buffer,
+                    file_name=f"dashboard_report_{datetime.now().strftime('%Y%m%d')}.pdf",
+                    mime="application/pdf"
+                )
+                st.success("PDF generated successfully!")
+            except ImportError:
+                st.warning("PDF generation is not available. Please use CSV or Excel export.")
+            except Exception as e:
+                st.error(f"Error generating PDF: {str(e)}")
 
 # ============ SIDEBAR AND NAVIGATION ============
 
@@ -1035,7 +1130,6 @@ elif page == "Analytics Backlog":
     render_backlog()
 elif page == "Export Dashboard":
     render_export_dashboard(company_filter)
-
 
 if __name__ == "__main__":
     pass
